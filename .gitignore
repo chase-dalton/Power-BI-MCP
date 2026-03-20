@@ -3,3 +3,6 @@
 
 # Environment / secrets
 billboard_scraper/.env
+
+# Claude Code internal settings
+.claude/
