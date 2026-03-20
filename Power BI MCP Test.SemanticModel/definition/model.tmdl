@@ -1,0 +1,336 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+	relationship a0000001-0000-0000-0000-000000000001
+		fromColumn: fact_chart_position.date_id
+		toColumn: dim_date.date_id
+
+	relationship a0000002-0000-0000-0000-000000000002
+		fromColumn: fact_chart_position.chart_id
+		toColumn: dim_chart.chart_id
+
+	relationship a0000003-0000-0000-0000-000000000003
+		fromColumn: fact_chart_position.song_id
+		toColumn: dim_song.song_id
+
+	relationship a0000004-0000-0000-0000-000000000004
+		fromColumn: fact_chart_position.artist_id
+		toColumn: dim_artist.artist_id
+
+	relationship a0000005-0000-0000-0000-000000000005
+		fromColumn: dim_song.artist_id
+		toColumn: dim_artist.artist_id
+		isActive: false
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref cultureInfo en-US
+
+table dim_date
+	lineageTag: t0000001-0000-0000-0000-000000000001
+
+	column date_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000001-0001-0000-0000-000000000001
+		summarizeBy: none
+
+	column full_date
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: c0000001-0002-0000-0000-000000000001
+		summarizeBy: none
+
+	column week_number
+		dataType: int64
+		lineageTag: c0000001-0003-0000-0000-000000000001
+		summarizeBy: none
+
+	column month
+		dataType: int64
+		lineageTag: c0000001-0004-0000-0000-000000000001
+		summarizeBy: none
+
+	column month_name
+		dataType: string
+		lineageTag: c0000001-0005-0000-0000-000000000001
+		summarizeBy: none
+
+	column quarter
+		dataType: int64
+		lineageTag: c0000001-0006-0000-0000-000000000001
+		summarizeBy: none
+
+	column year
+		dataType: int64
+		lineageTag: c0000001-0007-0000-0000-000000000001
+		summarizeBy: none
+
+	partition dim_date = m
+		mode: import
+		source = ```
+			let
+			    Source = PostgreSQL.Database("localhost", "billboard", [CreateNavigationProperties=false]),
+			    nav    = Source{[Schema="public", Item="dim_date"]}[Data]
+			in
+			    nav
+			```
+
+table dim_chart
+	lineageTag: t0000002-0000-0000-0000-000000000002
+
+	column chart_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000002-0001-0000-0000-000000000002
+		summarizeBy: none
+
+	column chart_slug
+		dataType: string
+		lineageTag: c0000002-0002-0000-0000-000000000002
+		summarizeBy: none
+
+	column chart_name
+		dataType: string
+		lineageTag: c0000002-0003-0000-0000-000000000002
+		summarizeBy: none
+
+	column chart_genre
+		dataType: string
+		lineageTag: c0000002-0004-0000-0000-000000000002
+		summarizeBy: none
+
+	column chart_category
+		dataType: string
+		lineageTag: c0000002-0005-0000-0000-000000000002
+		summarizeBy: none
+
+	column chart_frequency
+		dataType: string
+		lineageTag: c0000002-0006-0000-0000-000000000002
+		summarizeBy: none
+
+	partition dim_chart = m
+		mode: import
+		source = ```
+			let
+			    Source = PostgreSQL.Database("localhost", "billboard", [CreateNavigationProperties=false]),
+			    nav    = Source{[Schema="public", Item="dim_chart"]}[Data]
+			in
+			    nav
+			```
+
+table dim_artist
+	lineageTag: t0000003-0000-0000-0000-000000000003
+
+	column artist_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000003-0001-0000-0000-000000000003
+		summarizeBy: none
+
+	column artist_name
+		dataType: string
+		lineageTag: c0000003-0002-0000-0000-000000000003
+		summarizeBy: none
+
+	column genre
+		dataType: string
+		lineageTag: c0000003-0003-0000-0000-000000000003
+		summarizeBy: none
+
+	column mb_artist_id
+		dataType: string
+		isHidden
+		lineageTag: c0000003-0004-0000-0000-000000000003
+		summarizeBy: none
+
+	column country
+		dataType: string
+		lineageTag: c0000003-0005-0000-0000-000000000003
+		summarizeBy: none
+
+	column begin_date
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: c0000003-0006-0000-0000-000000000003
+		summarizeBy: none
+
+	partition dim_artist = m
+		mode: import
+		source = ```
+			let
+			    Source = PostgreSQL.Database("localhost", "billboard", [CreateNavigationProperties=false]),
+			    nav    = Source{[Schema="public", Item="dim_artist"]}[Data]
+			in
+			    nav
+			```
+
+table dim_song
+	lineageTag: t0000004-0000-0000-0000-000000000004
+
+	column song_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000004-0001-0000-0000-000000000004
+		summarizeBy: none
+
+	column song_title
+		dataType: string
+		lineageTag: c0000004-0002-0000-0000-000000000004
+		summarizeBy: none
+
+	column artist_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000004-0003-0000-0000-000000000004
+		summarizeBy: none
+
+	partition dim_song = m
+		mode: import
+		source = ```
+			let
+			    Source = PostgreSQL.Database("localhost", "billboard", [CreateNavigationProperties=false]),
+			    nav    = Source{[Schema="public", Item="dim_song"]}[Data]
+			in
+			    nav
+			```
+
+table fact_chart_position
+	lineageTag: t0000005-0000-0000-0000-000000000005
+
+	column position_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000005-0001-0000-0000-000000000005
+		summarizeBy: none
+
+	column song_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000005-0002-0000-0000-000000000005
+		summarizeBy: none
+
+	column artist_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000005-0003-0000-0000-000000000005
+		summarizeBy: none
+
+	column chart_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000005-0004-0000-0000-000000000005
+		summarizeBy: none
+
+	column date_id
+		dataType: int64
+		isHidden
+		lineageTag: c0000005-0005-0000-0000-000000000005
+		summarizeBy: none
+
+	column rank
+		dataType: int64
+		lineageTag: c0000005-0006-0000-0000-000000000005
+		summarizeBy: none
+
+	column last_week_rank
+		dataType: int64
+		lineageTag: c0000005-0007-0000-0000-000000000005
+		summarizeBy: none
+
+	column peak_position
+		dataType: int64
+		lineageTag: c0000005-0008-0000-0000-000000000005
+		summarizeBy: none
+
+	column weeks_on_chart
+		dataType: int64
+		lineageTag: c0000005-0009-0000-0000-000000000005
+		summarizeBy: none
+
+	column is_new_entry
+		dataType: boolean
+		lineageTag: c0000005-0010-0000-0000-000000000005
+		summarizeBy: none
+
+	partition fact_chart_position = m
+		mode: import
+		source = ```
+			let
+			    Source = PostgreSQL.Database("localhost", "billboard", [CreateNavigationProperties=false]),
+			    nav    = Source{[Schema="public", Item="fact_chart_position"]}[Data]
+			in
+			    nav
+			```
+
+table 'MCP Measures'
+	lineageTag: t0000006-0000-0000-0000-000000000006
+
+	measure 'Total Entries' = COUNTROWS('fact_chart_position')
+		lineageTag: m0000001-0000-0000-0000-000000000001
+		displayFolder: Volume
+		formatString: #,0
+
+	measure 'Avg Rank' = AVERAGE('fact_chart_position'[rank])
+		lineageTag: m0000002-0000-0000-0000-000000000002
+		displayFolder: Rank
+		formatString: 0.0
+
+	measure 'Best Peak Position' = MIN('fact_chart_position'[peak_position])
+		lineageTag: m0000003-0000-0000-0000-000000000003
+		displayFolder: Rank
+		formatString: #,0
+
+	measure '# New Entries' = CALCULATE(COUNTROWS('fact_chart_position'), 'fact_chart_position'[is_new_entry] = TRUE())
+		lineageTag: m0000004-0000-0000-0000-000000000004
+		displayFolder: Volume
+		formatString: #,0
+
+	measure '% New Entries' = DIVIDE([# New Entries], [Total Entries], 0)
+		lineageTag: m0000005-0000-0000-0000-000000000005
+		displayFolder: Volume
+		formatString: 0.00%
+
+	measure 'Max Weeks on Chart' = MAX('fact_chart_position'[weeks_on_chart])
+		lineageTag: m0000006-0000-0000-0000-000000000006
+		displayFolder: Longevity
+		formatString: #,0
+
+	measure '# Distinct Artists' = DISTINCTCOUNT('fact_chart_position'[artist_id])
+		lineageTag: m0000007-0000-0000-0000-000000000007
+		displayFolder: Volume
+		formatString: #,0
+
+	measure '# Distinct Songs' = DISTINCTCOUNT('fact_chart_position'[song_id])
+		lineageTag: m0000008-0000-0000-0000-000000000008
+		displayFolder: Volume
+		formatString: #,0
+
+	measure '# Charts' = DISTINCTCOUNT('fact_chart_position'[chart_id])
+		lineageTag: m0000009-0000-0000-0000-000000000009
+		displayFolder: Volume
+		formatString: #,0
+
+	measure 'Avg Rank Change' = AVERAGE('fact_chart_position'[last_week_rank]) - AVERAGE('fact_chart_position'[rank])
+		lineageTag: m0000010-0000-0000-0000-000000000010
+		displayFolder: Rank
+		formatString: +0.0;-0.0;0.0
+
+	column Value
+		dataType: int64
+		isHidden
+		lineageTag: c0000006-0001-0000-0000-000000000006
+		sourceColumn: Value
+		summarizeBy: none
+
+	partition 'MCP Measures' = calculated
+		mode: import
+		source = {0}

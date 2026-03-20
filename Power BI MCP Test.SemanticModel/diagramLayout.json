@@ -1,0 +1,58 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "name": "fact_chart_position",
+          "collapsed": false,
+          "location": { "x": 460, "y": 230 },
+          "size": { "width": 240, "height": 345 }
+        },
+        {
+          "name": "dim_date",
+          "collapsed": false,
+          "location": { "x": 790, "y": 30 },
+          "size": { "width": 220, "height": 255 }
+        },
+        {
+          "name": "dim_chart",
+          "collapsed": false,
+          "location": { "x": 790, "y": 430 },
+          "size": { "width": 220, "height": 225 }
+        },
+        {
+          "name": "dim_artist",
+          "collapsed": false,
+          "location": { "x": 80, "y": 430 },
+          "size": { "width": 220, "height": 225 }
+        },
+        {
+          "name": "dim_song",
+          "collapsed": false,
+          "location": { "x": 80, "y": 130 },
+          "size": { "width": 220, "height": 135 }
+        },
+        {
+          "name": "MCP Measures",
+          "collapsed": false,
+          "location": { "x": 460, "y": 660 },
+          "size": { "width": 240, "height": 375 }
+        }
+      ],
+      "name": "All tables",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "All tables",
+  "defaultDiagram": "All tables"
+}
