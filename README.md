@@ -45,14 +45,7 @@ Scrapes 10 major Billboard charts × 4 weeks of history and loads data into a Po
    pip install -r billboard_scraper/requirements.txt
    ```
 
-2. Copy `.env.example` to `.env` and fill in your PostgreSQL credentials:
-   ```
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=billboard
-   DB_USER=postgres
-   DB_PASSWORD=your_password_here
-   ```
+2. Copy `.env.example` to `.env` and fill in your PostgreSQL credentials.
 
 3. Create the `billboard` database in PostgreSQL (the scraper creates the tables automatically).
 
