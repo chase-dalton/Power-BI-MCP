@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
-import billboard
+from bs4 import BeautifulSoup
 import psycopg2
 import psycopg2.extras
 import requests
@@ -39,13 +39,24 @@ CHARTS = [
     ("billboard-200",                "Billboard 200",              "General",          "Albums"),
     ("hot-country-songs",            "Hot Country Songs",          "Country",          "Singles"),
     ("hot-r-and-b-hip-hop-songs",    "Hot R&B/Hip-Hop Songs",      "R&B/Hip-Hop",      "Singles"),
-    ("hot-rock-and-alternative-songs","Hot Rock & Alternative Songs","Rock/Alternative","Singles"),
+    ("hot-rock-songs",               "Hot Rock Songs",             "Rock/Alternative", "Singles"),
     ("hot-latin-songs",              "Hot Latin Songs",            "Latin",            "Singles"),
     ("pop-songs",                    "Pop Songs",                  "Pop",              "Airplay"),
     ("rap-song",                     "Rap Songs",                  "Hip-Hop/Rap",      "Singles"),
     ("alternative-songs",            "Alternative Songs",          "Alternative",      "Airplay"),
-    ("dance-club-songs",             "Dance Club Songs",           "Dance/Electronic", "Singles"),
+    ("dance-electronic-songs",       "Dance/Electronic Songs",     "Dance/Electronic", "Singles"),
 ]
+
+BB_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/123.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Referer": "https://www.google.com/",
+}
 
 MB_SEARCH_URL = "https://musicbrainz.org/ws/2/artist/"
 MB_HEADERS = {"User-Agent": "BillboardScraper/1.0 (educational project)"}
@@ -215,8 +226,7 @@ def upsert_song(cur, title: str, artist_id: int) -> int:
     return cur.fetchone()[0]
 
 
-def upsert_fact(cur, song_id, artist_id, chart_id, date_id, entry):
-    last_week = entry.lastPos if entry.lastPos != 0 else None
+def upsert_fact(cur, song_id, artist_id, chart_id, date_id, entry: dict):
     cur.execute(
         """
         INSERT INTO fact_chart_position
@@ -236,13 +246,101 @@ def upsert_fact(cur, song_id, artist_id, chart_id, date_id, entry):
             artist_id,
             chart_id,
             date_id,
-            entry.rank,
-            last_week,
-            entry.peakPos,
-            entry.weeks,
-            entry.isNew,
+            entry["rank"],
+            entry["last_week_rank"],
+            entry["peak_position"],
+            entry["weeks_on_chart"],
+            entry["is_new_entry"],
         ),
     )
+
+# ---------------------------------------------------------------------------
+# Billboard scraping (direct HTTP — billboard.py blocked by 403)
+# ---------------------------------------------------------------------------
+
+def _parse_stat(text: str):
+    """Return int from a stat cell, or None if empty / dash / non-numeric."""
+    t = text.strip()
+    if not t or t == "-":
+        return None
+    try:
+        return int(t)
+    except ValueError:
+        return None
+
+
+def fetch_chart(slug: str, date_str: str) -> tuple[date, list[dict]]:
+    """
+    Fetch a Billboard chart page and return (chart_date, entries).
+    Each entry is a dict with: rank, title, artist, last_week_rank,
+    peak_position, weeks_on_chart, is_new_entry.
+    Raises on HTTP errors.
+    """
+    url = f"https://www.billboard.com/charts/{slug}/{date_str}/"
+    resp = requests.get(url, headers=BB_HEADERS, timeout=30)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Parse the actual chart date from "Week of Month DD, YYYY"
+    import re as _re
+    week_tag = soup.find(string=_re.compile(r"Week of", _re.I))
+    chart_date = date.fromisoformat(date_str)  # fallback
+    if week_tag:
+        m = _re.search(r"Week of\s+(\w+ \d+,\s*\d{4})", week_tag, _re.I)
+        if m:
+            try:
+                from datetime import datetime
+                chart_date = datetime.strptime(m.group(1).strip(), "%B %d, %Y").date()
+            except ValueError:
+                pass
+
+    entries = []
+    for row in soup.select("ul.o-chart-results-list-row"):
+        lis = row.select("li.o-chart-results-list__item")
+        if len(lis) < 4:
+            continue
+
+        # Rank: first c-label span in the row
+        rank_el = row.select_one("li .c-label")
+        if not rank_el:
+            continue
+        try:
+            rank = int(rank_el.get_text(strip=True))
+        except ValueError:
+            continue
+
+        # Title / artist: find h3 anywhere in the row (structure varies by chart)
+        h3 = row.select_one("h3")
+        if not h3:
+            continue
+        title = h3.get_text(strip=True)
+        artist_span = h3.find_next_sibling("span")
+        artist = artist_span.get_text(strip=True) if artist_span else ""
+
+        # Stats lis: those with u-hidden@mobile-max in class list
+        stat_lis = [
+            li for li in lis
+            if "u-hidden@mobile-max" in " ".join(li.get("class", []))
+        ]
+        stat_texts = [li.get_text(strip=True) for li in stat_lis]
+
+        is_new = len(stat_texts) > 0 and stat_texts[0].upper() == "NEW"
+        last_week_rank = _parse_stat(stat_texts[2]) if len(stat_texts) > 2 else None
+        peak_position = _parse_stat(stat_texts[3]) if len(stat_texts) > 3 else None
+        weeks_on_chart = _parse_stat(stat_texts[4]) if len(stat_texts) > 4 else None
+
+        entries.append({
+            "rank": rank,
+            "title": title,
+            "artist": artist,
+            "last_week_rank": last_week_rank,
+            "peak_position": peak_position,
+            "weeks_on_chart": weeks_on_chart,
+            "is_new_entry": is_new,
+        })
+
+    return chart_date, entries
+
 
 # ---------------------------------------------------------------------------
 # MusicBrainz enrichment
@@ -342,28 +440,25 @@ def main():
             log.info("Fetching %s  week=%s", slug, date_str)
 
             try:
-                chart_data = billboard.ChartData(slug, date=date_str, timeout=30)
+                actual_date, entries = fetch_chart(slug, date_str)
             except Exception as exc:
                 log.error("Failed to fetch %s / %s: %s — skipping", slug, date_str, exc)
                 time.sleep(SLEEP_BB)
                 continue
 
-            # Use the actual chart date from the response
-            actual_date = week_date
-            if chart_data.date:
-                try:
-                    actual_date = date.fromisoformat(chart_data.date)
-                except ValueError:
-                    pass
+            if not entries:
+                log.warning("No entries parsed for %s / %s — skipping", slug, date_str)
+                time.sleep(SLEEP_BB)
+                continue
 
             with conn.cursor() as cur:
                 date_id = upsert_date(cur, actual_date)
 
                 inserted = 0
-                for entry in chart_data:
-                    mb_info = lookup_musicbrainz(entry.artist)
-                    artist_id = upsert_artist(cur, entry.artist, mb_info)
-                    song_id = upsert_song(cur, entry.title, artist_id)
+                for entry in entries:
+                    mb_info = lookup_musicbrainz(entry["artist"])
+                    artist_id = upsert_artist(cur, entry["artist"], mb_info)
+                    song_id = upsert_song(cur, entry["title"], artist_id)
                     upsert_fact(cur, song_id, artist_id, chart_id, date_id, entry)
                     inserted += 1
 
